@@ -1,7 +1,7 @@
 # Node modules
 node_modules/
 
-# Output folder (compiled JS)
+# Compiled output
 out/
 
 # VS Code specific
@@ -15,9 +15,9 @@ yarn-error.log*
 # MacOS system files
 .DS_Store
 
-# Environment files (if you store secrets like API keys)
+# Environment files (API keys)
 .env
 
-# Optional: VSCE packaging files
+# VSCE packaged files
 *.vsix
 

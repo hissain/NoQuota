@@ -1,0 +1,27 @@
+# Node modules (except production dependencies)
+node_modules/**
+
+# Source maps, TypeScript files (you ship JS in out/)
+src/
+*.ts
+*.map
+
+# Tests
+test/
+*.spec.js
+*.test.js
+
+# Git files
+.git/
+.gitignore
+
+# Editor settings
+.vscode/
+*.code-workspace
+
+# Logs and environment
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+

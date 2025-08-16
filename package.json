@@ -47,5 +47,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/hissain/NoQuota.git" 
-  }
+  },
+  "keywords": [
+    "AI",
+    "VSCode",
+    "Extension",
+    "Utility",
+    "CogitoAI"
+  ],
+  "license": "MIT"
 }
