@@ -4,6 +4,7 @@
   "description": "VSCode extension that provides AI suggestions for selected text using OpenAI API.",
   "version": "0.0.1",
   "publisher": "cogitoai",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.80.0"
   },
