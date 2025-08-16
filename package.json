@@ -1,6 +1,6 @@
 {
-  "name": "ai-helper",
-  "displayName": "AI Helper",
+  "name": "ai-helper-pro",
+  "displayName": "AI Helper Pro",
   "description": "VSCode extension that provides AI suggestions for selected text using OpenAI API.",
   "version": "0.0.1",
   "publisher": "cogitoai",
@@ -20,7 +20,7 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "AI Helper",
+      "title": "AI Helper Pro",
       "properties": {
         "ai-helper.apiKey": {
           "type": "string",
