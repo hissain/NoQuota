@@ -127,6 +127,8 @@ class AIModelManager {
     }
 
     private isQuotaError(error: any, model: ModelConfig): boolean {
+        //log error
+        console.log(typeof error.code === 'string' ? error.code.toLowerCase() : error.code);
         const errorMessage = error.message?.toLowerCase() || '';
         const errorCode = error.code?.toLowerCase() || '';
 
@@ -484,37 +486,37 @@ async function editModel(modelManager: AIModelManager) {
             }
             break;
     }
+    vscode.window.showInformationMessage(`Model ${selected.model.name} updated successfully!`);
 }
 
 async function deleteModel(modelManager: AIModelManager) {
     const models = modelManager.getAllModels();
     const modelItems = models.map(m => ({ label: m.name, model: m }));
-    
+
     const selected = await vscode.window.showQuickPick(modelItems, {
         placeHolder: 'Select model to delete'
     });
     if (!selected) return;
 
-    const confirm = await vscode.window.showWarningMessage(
-        `Are you sure you want to delete ${selected.model.name}?`,
-        'Yes', 'No'
-    );
-    
+    const confirm = await vscode.window.showQuickPick(['Yes', 'No'], {
+        placeHolder: `Are you sure you want to delete ${selected.model.name}?`
+    });
+
     if (confirm === 'Yes') {
         await modelManager.removeModel(selected.model.name);
-        vscode.window.showInformationMessage(`Model ${selected.model.name} deleted`);
+        vscode.window.showInformationMessage(`Model ${selected.model.name} deleted successfully!`);
     }
 }
 
 async function toggleCompletion(completionProvider: AICompletionProvider) {
     const config = vscode.workspace.getConfiguration('ai-helper');
-    const currentState = config.get('enableCompletion', false);
-    const newState = !currentState;
-    
-    await config.update('enableCompletion', newState, vscode.ConfigurationTarget.Global);
-    completionProvider.setEnabled(newState);
-    
-    vscode.window.showInformationMessage(`AI code completion ${newState ? 'enabled' : 'disabled'}`);
+    const enabled = config.get<boolean>('enableCompletion', false);
+    const newEnabled = !enabled;
+
+    await config.update('enableCompletion', newEnabled, vscode.ConfigurationTarget.Global);
+    completionProvider.setEnabled(newEnabled);
+
+    vscode.window.showInformationMessage(`AI inline completion is now ${newEnabled ? 'enabled' : 'disabled'}.`);
 }
 
 export function deactivate() {}
