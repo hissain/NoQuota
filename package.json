@@ -2,7 +2,7 @@
   "name": "ai-helper-pro",
   "displayName": "AI Helper Pro",
   "description": "Multi-model AI assistant for VSCode with automatic fallback, code completion, and quota management.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "publisher": "cogitoai",
   "icon": "images/icon.png",
   "engines": {
@@ -131,11 +131,13 @@
       }
     }
   },
-    "scripts": {
+  "scripts": {
     "build": "esbuild src/extension.ts --bundle --platform=node --outfile=out/extension.js --external:vscode"
   },
   "dependencies": {
-    "openai": "^4.24.0"
+    "openai": "^4.104.0",
+    "@openrouter/ai-sdk-provider": "^1.1.2",
+    "ai": "^5.0.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",

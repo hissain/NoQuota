@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
 
 // AI model configuration interface
 interface ModelConfig {
@@ -15,13 +17,40 @@ interface ModelConfig {
 // Default model configurations
 const DEFAULT_MODELS: ModelConfig[] = [
     {
+        name: 'DeepSeekR1 (OpenRouter)',
+        provider: 'openrouter',
+        apiKey: '',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        model: 'deepseek/deepseek-r1:free',
+        priority: 1,
+        enabled: true,
+        quotaErrors: [
+            'insufficient_quota', 
+            'rate_limit_exceeded', 
+            'quota_exceeded',
+            'rate limit exceeded',
+            'free-models-per-day',
+            'insufficient_credits',
+            'daily limit exceeded'
+        ]
+    },
+    {
         name: 'OpenAI GPT-4o Mini',
         provider: 'openai',
         apiKey: '',
         model: 'gpt-4o-mini',
+        baseUrl: 'https://api.openai.com/v1',
         priority: 1,
-        enabled: true,
-        quotaErrors: ['insufficient_quota', 'rate_limit_exceeded', 'quota_exceeded']
+        enabled: false,
+        quotaErrors: [
+            'insufficient_quota', 
+            'rate_limit_exceeded', 
+            'quota_exceeded',
+            'rate limit exceeded',
+            'free-models-per-day',
+            'insufficient_credits',
+            'daily limit exceeded'
+        ]
     },
     {
         name: 'OpenAI GPT-4',
@@ -29,8 +58,16 @@ const DEFAULT_MODELS: ModelConfig[] = [
         apiKey: '',
         model: 'gpt-4',
         priority: 2,
-        enabled: true,
-        quotaErrors: ['insufficient_quota', 'rate_limit_exceeded', 'quota_exceeded']
+        enabled: false,
+        quotaErrors: [
+            'insufficient_quota', 
+            'rate_limit_exceeded', 
+            'quota_exceeded',
+            'rate limit exceeded',
+            'free-models-per-day',
+            'insufficient_credits',
+            'daily limit exceeded'
+        ]
     },
     {
         name: 'Claude (via OpenRouter)',
@@ -40,7 +77,15 @@ const DEFAULT_MODELS: ModelConfig[] = [
         model: 'anthropic/claude-3-haiku',
         priority: 3,
         enabled: false,
-        quotaErrors: ['insufficient_quota', 'rate_limit_exceeded', 'quota_exceeded', 'insufficient_credits']
+        quotaErrors: [
+            'insufficient_quota', 
+            'rate_limit_exceeded', 
+            'quota_exceeded',
+            'rate limit exceeded',
+            'free-models-per-day',
+            'insufficient_credits',
+            'daily limit exceeded'
+        ]
     },
     {
         name: 'Gemini (via OpenRouter)',
@@ -50,7 +95,15 @@ const DEFAULT_MODELS: ModelConfig[] = [
         model: 'google/gemini-pro',
         priority: 4,
         enabled: false,
-        quotaErrors: ['insufficient_quota', 'rate_limit_exceeded', 'quota_exceeded', 'insufficient_credits']
+        quotaErrors: [
+            'insufficient_quota', 
+            'rate_limit_exceeded', 
+            'quota_exceeded',
+            'rate limit exceeded',
+            'free-models-per-day',
+            'insufficient_credits',
+            'daily limit exceeded'
+        ]
     },
     {
         name: 'Local Ollama',
@@ -127,17 +180,48 @@ class AIModelManager {
     }
 
     private isQuotaError(error: any, model: ModelConfig): boolean {
-        //log error
-        console.log(typeof error.code === 'string' ? error.code.toLowerCase() : error.code);
+        // console.log(`Checking quota error for ${model.name}:`, {
+        //         errorMessage: error.message,
+        //         errorCode: error.code,
+        //         errorType: error.constructor.name,
+        //         fullError: error
+        //     });
+
         const errorMessage = error.message?.toLowerCase() || '';
         const errorCode = error.code?.toLowerCase() || '';
 
-        const quotaErrors = model.quotaErrors ?? []; // ✅ always array
+        // OpenRouter specific error patterns (more comprehensive)
+        const openRouterQuotaErrors = [
+            'rate limit exceeded',
+            'free-models-per-day',
+            'insufficient_quota',
+            'quota_exceeded',
+            'insufficient_credits',
+            'rate_limit_exceeded',
+            'quota limit reached',
+            'insufficient funds',
+            'daily limit exceeded',
+            'monthly limit exceeded'
+        ];
+
+        // Default quota errors for other providers
+        const defaultQuotaErrors = [
+            'insufficient_quota',
+            'rate_limit_exceeded',
+            'quota_exceeded'
+        ];
+
+        const quotaErrors = model.provider === 'openrouter' 
+            ? [...openRouterQuotaErrors, ...(model.quotaErrors ?? [])]
+            : (model.quotaErrors ?? defaultQuotaErrors);
         
-        return quotaErrors.some(quotaError => 
+        const isQuotaError = quotaErrors.some(quotaError => 
             errorMessage.includes(quotaError.toLowerCase()) || 
             errorCode.includes(quotaError.toLowerCase())
         );
+
+        console.log(`Is quota error: ${isQuotaError} for model ${model.name}`);
+        return isQuotaError;
     }
 
     async makeRequest(prompt: string, isCompletion: boolean = false): Promise<string> {
@@ -159,10 +243,10 @@ class AIModelManager {
                     console.log(`Quota exceeded for ${model.name}, trying next model...`);
                     continue;
                 } else {
-                    console.log(`Non-quota error for ${model.name}:`, error.message);
-                    if (enabledModels.indexOf(model) === enabledModels.length - 1) {
-                        throw error;
-                    }
+                    // console.log(`Non-quota error for ${model.name}:`, error.message);
+                    // if (enabledModels.indexOf(model) === enabledModels.length - 1) {
+                    //     throw error;
+                    // }
                     continue;
                 }
             }
@@ -172,39 +256,83 @@ class AIModelManager {
     }
 
     private async createClient(model: ModelConfig): Promise<any> {
-        // Dynamically import OpenAI to avoid ESM/CommonJS conflict
-        const OpenAI = (await import('openai')).default;
-        const config: any = { apiKey: model.apiKey };
-        if (model.baseUrl) {
-            config.baseURL = model.baseUrl;
+        if (model.provider === 'openrouter') {
+            // Use OpenRouter's official SDK
+            return createOpenRouter({
+                apiKey: model.apiKey,
+                baseURL: model.baseUrl || 'https://openrouter.ai/api/v1'
+            });
+        } else {
+            // Use OpenAI SDK for OpenAI models
+            const OpenAI = (await import('openai')).default;
+            const config: any = { apiKey: model.apiKey };
+            if (model.baseUrl) {
+                config.baseURL = model.baseUrl;
+            }
+            return new OpenAI(config);
         }
-        return new OpenAI(config);
     }
 
+    // Also update your callModel method to add more debugging:
+
     private async callModel(client: any, model: ModelConfig, prompt: string, isCompletion: boolean): Promise<string> {
-        if (isCompletion) {
-            const response = await client.chat.completions.create({
-                model: model.model,
-                messages: [
-                    { 
-                        role: 'system', 
-                        content: 'You are a code completion assistant. Complete the code naturally and concisely. Only provide the completion, not explanations.' 
-                    },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.3,
-                max_tokens: 200
-            });
-            return response.choices[0]?.message?.content || '';
+        if (model.provider === 'openrouter') {
+            // Use AI SDK with OpenRouter
+            try {
+                const modelInstance = client(model.model);
+                
+                if (isCompletion) {
+                    const { text } = await generateText({
+                        model: modelInstance,
+                        messages: [
+                            { 
+                                role: 'system', 
+                                content: 'You are a code completion assistant. Complete the code naturally and concisely. Only provide the completion, not explanations.' 
+                            },
+                            { role: 'user', content: prompt }
+                        ],
+                        temperature: 0.3,
+                        maxTokens: 200
+                    });
+                    return text || '';
+                } else {
+                    const { text } = await generateText({
+                        model: modelInstance,
+                        prompt: `Provide a helpful suggestion for this text: "${prompt}"`,
+                        temperature: 0.7
+                    });
+                    return text || 'No suggestion generated.';
+                }
+            } catch (error: any) {
+                console.error('OpenRouter API error:', error);
+                throw error;
+            }
         } else {
-            const response = await client.chat.completions.create({
-                model: model.model,
-                messages: [
-                    { role: 'user', content: `Provide a helpful suggestion for this text: "${prompt}"` }
-                ],
-                temperature: 0.7
-            });
-            return response.choices[0]?.message?.content || 'No suggestion generated.';
+            // Use OpenAI client for other providers
+            if (isCompletion) {
+                const response = await client.chat.completions.create({
+                    model: model.model,
+                    messages: [
+                        { 
+                            role: 'system', 
+                            content: 'You are a code completion assistant. Complete the code naturally and concisely. Only provide the completion, not explanations.' 
+                        },
+                        { role: 'user', content: prompt }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 200
+                });
+                return response.choices[0]?.message?.content || '';
+            } else {
+                const response = await client.chat.completions.create({
+                    model: model.model,
+                    messages: [
+                        { role: 'user', content: `Provide a helpful suggestion for this text: "${prompt}"` }
+                    ],
+                    temperature: 0.7
+                });
+                return response.choices[0]?.message?.content || 'No suggestion generated.';
+            }
         }
     }
 }
