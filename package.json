@@ -2,7 +2,7 @@
   "name": "ai-helper-pro",
   "displayName": "AI Helper Pro",
   "description": "Multi-model AI assistant for VSCode with automatic fallback, code completion, and quota management.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "publisher": "cogitoai",
   "icon": "images/icon.png",
   "engines": {
