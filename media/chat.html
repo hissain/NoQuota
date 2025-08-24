@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Helper Chat</title>
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+            margin: 0;
+            padding: 10px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+        }
+        
+        .title {
+            font-weight: bold;
+            color: var(--vscode-foreground);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .model-status {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+        }
+        
+        .current-model {
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .model-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--vscode-charts-green);
+        }
+        
+        .status-dot.offline {
+            background-color: var(--vscode-charts-red);
+        }
+        
+        .models-summary {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+        }
+        
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            padding: 5px;
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 90%;
+            word-wrap: break-word;
+        }
+        
+        .message.user {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        
+        .message.assistant {
+            background-color: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+        }
+        
+        .message.system {
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border: 1px solid var(--vscode-inputValidation-errorBorder);
+            font-style: italic;
+        }
+        
+        .message-meta {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 5px;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+        }
+        
+        .message-input:focus {
+            border-color: var(--vscode-focusBorder);
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .btn:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        
+        .btn.secondary {
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+        
+        .btn.secondary:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+        
+        .btn.icon-only {
+            padding: 6px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        pre {
+            background-color: var(--vscode-textCodeBlock-background);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+            padding: 10px;
+            overflow-x: auto;
+            font-family: var(--vscode-editor-font-family);
+            font-size: var(--vscode-editor-font-size);
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 50px;
+        }
+        
+        .notification {
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .notification.success {
+            background-color: var(--vscode-inputValidation-infoBackground);
+            border: 1px solid var(--vscode-inputValidation-infoBorder);
+            color: var(--vscode-inputValidation-infoForeground);
+        }
+        
+        .notification.error {
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border: 1px solid var(--vscode-inputValidation-errorBorder);
+            color: var(--vscode-inputValidation-errorForeground);
+        }
+        
+        .notification.show {
+            display: block;
+        }
+
+        .settings-link {
+            font-size: 11px;
+            color: var(--vscode-textLink-foreground);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .settings-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">AI Helper Pro</div>
+        <div class="header-actions">
+            <button id="refresh-btn" class="btn icon-only secondary" title="Refresh Models">
+                🔄
+            </button>
+            <button id="settings-btn" class="btn icon-only secondary" title="Open Extension Settings">
+                ⚙️
+            </button>
+        </div>
+    </div>
+    
+    <div class="model-status" id="model-status">
+        <div class="current-model" id="current-model">
+            <div class="model-indicator">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="model-name">Loading models...</span>
+            </div>
+        </div>
+        <div class="models-summary" id="models-summary">
+            <a href="#" class="settings-link" id="settings-link">Configure models in settings</a>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+    
+    <div class="chat-container" id="chat-container">
+        <div class="empty-state">
+            <p>👋 Welcome to AI Helper Pro!</p>
+            <p>Start a conversation by typing a message below.</p>
+            <p><a href="#" class="settings-link" id="no-models-link" style="display: none;">Configure your AI models in settings to get started</a></p>
+        </div>
+    </div>
+    
+    <div class="input-container">
+        <input type="text" id="message-input" class="message-input" placeholder="Type your message..." />
+        <button id="send-btn" class="btn">Send</button>
+        <button id="clear-btn" class="btn secondary">Clear</button>
+    </div>
+    
+    <div id="models">Loading models...</div>
+    
+    <script>
+        const vscode = acquireVsCodeApi();
+        let messages = [];
+        let enabledModels = [];
+        
+        // DOM elements
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const modelNameSpan = document.getElementById('model-name');
+        const modelsSummaryDiv = document.getElementById('models-summary');
+        const statusDot = document.getElementById('status-dot');
+        const notification = document.getElementById('notification');
+        const settingsBtn = document.getElementById('settings-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const settingsLink = document.getElementById('settings-link');
+        const noModelsLink = document.getElementById('no-models-link');
+        
+        // Settings button click handler
+        settingsBtn.addEventListener('click', () => {
+            console.log('Settings button clicked');
+            vscode.postMessage({ type: 'openSettings' });
+        });
+        
+        // Refresh button click handler
+        refreshBtn.addEventListener('click', () => {
+            console.log('Refresh button clicked');
+            vscode.postMessage({ type: 'getModels' });
+        });
+        
+        settingsLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            vscode.postMessage({ type: 'openSettings' });
+        });
+        
+        noModelsLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            vscode.postMessage({ type: 'openSettings' });
+        });
+        
+        // Chat functions
+        function updateChat() {
+            if (messages.length === 0) {
+                const hasModels = enabledModels.length > 0;
+                chatContainer.innerHTML = `
+                    <div class="empty-state">
+                        <p>👋 Welcome to AI Helper Pro!</p>
+                        ${hasModels 
+                            ? '<p>Start a conversation by typing a message below.</p>' 
+                            : '<p id="no-models-message">No AI models configured.</p>'
+                        }
+                    </div>
+                `;
+                
+                // Show/hide the configure link
+                const noModelsMessage = document.getElementById('no-models-message');
+                if (noModelsMessage && !hasModels) {
+                    noModelsMessage.innerHTML = 'No AI models configured. <a href="#" class="settings-link" onclick="vscode.postMessage({type: \'openSettings\'})">Configure models in settings</a>';
+                }
+                return;
+            }
+            
+            chatContainer.innerHTML = messages.map(msg => {
+                const time = new Date(msg.timestamp).toLocaleTimeString();
+                const modelInfo = msg.modelUsed ? ` • ${msg.modelUsed}` : '';
+                
+                return `
+                    <div class="message ${msg.role}">
+                        <div>${formatMessage(msg.content)}</div>
+                        <div class="message-meta">${time}${modelInfo}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function formatMessage(content) {
+            return content
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                .replace(/`([^`]+)`/g, '<code style="background-color: var(--vscode-textCodeBlock-background); padding: 2px 4px; border-radius: 3px; font-family: var(--vscode-editor-font-family);">$1</code>')
+                .replace(/\n/g, '<br>');
+        }
+        
+        function updateModelStatus() {
+            console.log('Updating model status, enabled models:', enabledModels.length);
+            
+            if (enabledModels.length === 0) {
+                modelNameSpan.textContent = 'No models configured';
+                statusDot.classList.add('offline');
+                modelsSummaryDiv.innerHTML = '<a href="#" class="settings-link" id="settings-link-refresh">Configure models in settings</a>';
+                
+                // Re-attach event listener for the new link
+                const refreshLink = document.getElementById('settings-link-refresh');
+                if (refreshLink) {
+                    refreshLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        vscode.postMessage({ type: 'openSettings' });
+                    });
+                }
+                
+                // Disable input
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                messageInput.placeholder = 'Configure AI models in settings to start chatting...';
+                return;
+            }
+            
+            const primaryModel = enabledModels[0];
+            modelNameSpan.textContent = `Active: ${primaryModel.name}`;
+            statusDot.classList.remove('offline');
+            
+            const summaryText = enabledModels.length === 1 
+                ? '1 model enabled' 
+                : `${enabledModels.length} models enabled`;
+            modelsSummaryDiv.innerHTML = `${summaryText} • <a href="#" class="settings-link" id="settings-link-refresh">Manage in settings</a>`;
+            
+            // Re-attach event listener for the new link
+            const refreshLink = document.getElementById('settings-link-refresh');
+            if (refreshLink) {
+                refreshLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    vscode.postMessage({ type: 'openSettings' });
+                });
+            }
+            
+            // Enable input
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            messageInput.placeholder = 'Type your message...';
+        }
+        
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            if (enabledModels.length === 0) {
+                showNotification('No enabled models configured. Please configure at least one model in settings.', 'error');
+                return;
+            }
+            
+            vscode.postMessage({
+                type: 'sendMessage',
+                message: message
+            });
+            
+            messageInput.value = '';
+        }
+        
+        sendBtn.addEventListener('click', sendMessage);
+        clearBtn.addEventListener('click', () => {
+            vscode.postMessage({ type: 'clearChat' });
+        });
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Handle messages from extension
+        window.addEventListener('message', event => {
+            const message = event.data;
+            console.log('Received message from extension:', message.type, message);
+            
+            switch (message.type) {
+                case 'updateMessages':
+                    messages = message.messages;
+                    updateChat();
+                    break;
+                case 'updateModels':
+                    enabledModels = message.enabledModels || [];
+                    console.log('Received models update:', enabledModels.length, 'enabled models');
+                    updateModelStatus();
+                    updateChat(); // Update chat to show/hide no models message
+                    break;
+                case 'showMessage':
+                    showNotification(message.message, message.messageType);
+                    break;
+            }
+        });
+        
+        // Request initial data
+        console.log('Requesting initial models...');
+        vscode.postMessage({ type: 'getModels' });
+        
+        window.addEventListener('message', event => {
+          const message = event.data;
+          if (message.type === 'updateModels') {
+            const models = message.enabledModels || [];
+            const modelsDiv = document.getElementById('models');
+            if (models.length > 0) {
+              modelsDiv.innerText = 'Enabled models: ' + models.map(m => m.name).join(', ');
+            } else {
+              modelsDiv.innerText = 'No models configured';
+            }
+          }
+        });
+        
+        // Request models on load
+        window.onload = () => {
+          vscode.postMessage({ type: 'getModels' });
+        };
+    </script>
+</body>
+</html>

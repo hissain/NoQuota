@@ -2,7 +2,7 @@
   "name": "ai-helper-pro",
   "displayName": "AI Helper Pro",
   "description": "Multi-model AI assistant for VSCode with automatic fallback, code completion, and quota management.",
-  "version": "2.0.1",
+  "version": "2.0.4",
   "publisher": "cogitoai",
   "icon": "images/icon.png",
   "engines": {
@@ -14,46 +14,70 @@
     "Snippets"
   ],
   "activationEvents": [
-    "onCommand:ai-helper.suggest",
-    "onCommand:ai-helper.configure",
-    "onCommand:ai-helper.toggleCompletion",
-    "onCommand:ai-helper.test",
-    "onLanguage:javascript",
-    "onLanguage:typescript",
-    "onLanguage:python",
-    "onLanguage:java",
-    "onLanguage:cpp",
-    "onLanguage:c",
-    "onLanguage:csharp",
-    "onLanguage:go",
-    "onLanguage:rust",
-    "onLanguage:php",
-    "onLanguage:html",
-    "onLanguage:css",
-    "onLanguage:json"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
+  "compilerOptions": {
+    "outDir": "out",
+    "module": "commonjs",
+    "target": "es2020",
+    "lib": ["es2020"]
+  },
   "contributes": {
+    "views": {
+      "ai-helper-sidebar": [
+        {
+          "id": "ai-helper.chatView",
+          "name": "AI Chat",
+          "type": "webview"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ai-helper-sidebar",
+          "title": "AI Helper Pro",
+          "icon": "$(robot)"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "ai-helper.suggest",
         "title": "AI Suggestion",
-        "category": "AI Helper"
-      },
-      {
-        "command": "ai-helper.configure",
-        "title": "Configure AI Models",
-        "category": "AI Helper"
+        "category": "AI Helper",
+        "icon": "$(sparkle)"
       },
       {
         "command": "ai-helper.toggleCompletion",
         "title": "Toggle AI Code Completion",
-        "category": "AI Helper"
+        "category": "AI Helper",
+        "icon": "$(code)"
       },
       {
-        "command": "ai-helper.test",
-        "title": "Test Extension",
-        "category": "AI Helper"
+        "command": "ai-helper.openChat",
+        "title": "Open AI Chat",
+        "category": "AI Helper",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "ai-helper.openSettings",
+        "title": "Open AI Helper Settings",
+        "category": "AI Helper",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "ai-helper.addModel",
+        "title": "Add AI Model",
+        "category": "AI Helper",
+        "icon": "$(add)"
+      },
+      {
+        "command": "ai-helper.refreshModels",
+        "title": "Refresh AI Models",
+        "category": "AI Helper",
+        "icon": "$(refresh)"
       }
     ],
     "keybindings": [
@@ -67,6 +91,11 @@
         "command": "ai-helper.toggleCompletion",
         "key": "ctrl+shift+alt+a",
         "mac": "cmd+shift+alt+a"
+      },
+      {
+        "command": "ai-helper.openChat",
+        "key": "ctrl+shift+alt+c",
+        "mac": "cmd+shift+alt+c"
       }
     ],
     "menus": {
@@ -83,13 +112,19 @@
           "when": "editorTextFocus"
         },
         {
-          "command": "ai-helper.configure"
-        },
-        {
           "command": "ai-helper.toggleCompletion"
         },
         {
-          "command": "ai-helper.test"
+          "command": "ai-helper.openChat"
+        },
+        {
+          "command": "ai-helper.openSettings"
+        },
+        {
+          "command": "ai-helper.addModel"
+        },
+        {
+          "command": "ai-helper.refreshModels"
         }
       ]
     },
@@ -97,11 +132,6 @@
       "type": "object",
       "title": "AI Helper Pro",
       "properties": {
-        "ai-helper.models": {
-          "type": "array",
-          "description": "AI model configurations with API keys, priorities, and settings",
-          "default": []
-        },
         "ai-helper.enableCompletion": {
           "type": "boolean",
           "description": "Enable AI-powered code completion",
@@ -127,6 +157,109 @@
           "default": 30000,
           "minimum": 5000,
           "maximum": 120000
+        },
+        "ai-helper.chatHistory": {
+          "type": "array",
+          "description": "Chat message history",
+          "default": []
+        },
+        "ai-helper.models": {
+          "type": "array",
+          "description": "AI model configurations. Configure your AI models here by editing this JSON array.",
+          "default": [
+            {
+              "name": "DeepSeekR1 (OpenRouter)",
+              "provider": "openrouter",
+              "apiKey": "",
+              "baseUrl": "https://openrouter.ai/api/v1",
+              "model": "deepseek/deepseek-r1:free",
+              "priority": 1,
+              "enabled": true
+            },
+            {
+              "name": "OpenAI GPT-4o Mini",
+              "provider": "openai",
+              "apiKey": "",
+              "model": "gpt-4o-mini",
+              "baseUrl": "https://api.openai.com/v1",
+              "priority": 1,
+              "enabled": false
+            },
+            {
+              "name": "OpenAI GPT-4",
+              "provider": "openai",
+              "apiKey": "",
+              "model": "gpt-4",
+              "priority": 2,
+              "enabled": false
+            },
+            {
+              "name": "Claude (via OpenRouter)",
+              "provider": "openrouter",
+              "apiKey": "",
+              "baseUrl": "https://openrouter.ai/api/v1",
+              "model": "anthropic/claude-3-haiku",
+              "priority": 3,
+              "enabled": false
+            },
+            {
+              "name": "Gemini (via OpenRouter)",
+              "provider": "openrouter",
+              "apiKey": "",
+              "baseUrl": "https://openrouter.ai/api/v1",
+              "model": "google/gemini-pro",
+              "priority": 4,
+              "enabled": false
+            },
+            {
+              "name": "Local Ollama",
+              "provider": "ollama",
+              "apiKey": "dummy",
+              "baseUrl": "http://localhost:11434/v1",
+              "model": "llama2",
+              "priority": 5,
+              "enabled": false
+            }
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Display name for the model"
+              },
+              "provider": {
+                "type": "string",
+                "enum": ["openai", "openrouter", "ollama", "custom"],
+                "description": "AI provider"
+              },
+              "model": {
+                "type": "string",
+                "description": "Model identifier (e.g., gpt-4, claude-3-haiku)"
+              },
+              "apiKey": {
+                "type": "string",
+                "description": "API key for the model (leave empty for Ollama)"
+              },
+              "baseUrl": {
+                "type": "string",
+                "description": "Custom base URL for API requests"
+              },
+              "priority": {
+                "type": "number",
+                "description": "Priority order (1 = highest priority)",
+                "minimum": 1,
+                "maximum": 10,
+                "default": 1
+              },
+              "enabled": {
+                "type": "boolean",
+                "description": "Whether this model is enabled",
+                "default": true
+              }
+            },
+            "required": ["name", "provider", "model"]
+          }
         }
       }
     }
@@ -152,7 +285,8 @@
   },
   "files": [
     "out",
-    "images"
+    "images",
+    "media"
   ],
   "keywords": [
     "AI",
@@ -166,7 +300,9 @@
     "Code Completion",
     "Multi-Model",
     "Fallback",
-    "Quota Management"
+    "Quota Management",
+    "Chat",
+    "Assistant"
   ],
   "license": "MIT"
 }
