@@ -298,7 +298,7 @@ class AIModelManager {
         if (model.provider === 'ollama') {
             return true;
         }
-        return model.apiKey && model.apiKey.trim() !== '';
+        return typeof model.apiKey === 'string' && model.apiKey.trim() !== '';
     }
 
     getAllModels(): ModelConfig[] {
@@ -511,6 +511,37 @@ class ChatViewProvider implements vscode.WebviewViewProvider {
                 case 'openSettings':
                     await vscode.commands.executeCommand('workbench.action.openSettings', 'ai-helper');
                     break;
+                case 'toggleModelEnabled':
+                    {
+                        const config = vscode.workspace.getConfiguration('ai-helper');
+                        const allModels = config.get<ModelConfig[]>('models') || [];
+                        if (allModels[data.modelIndex]) {
+                            allModels[data.modelIndex].enabled = data.enabled;
+                            await config.update('models', allModels, vscode.ConfigurationTarget.Global);
+                            // Send updated models back to webview
+                            this.sendModelsToWebview();
+                        }
+                    }
+                    break;
+                case 'toggleAutocomplete':
+                    {
+                        const config = vscode.workspace.getConfiguration('ai-helper');
+                        await config.update('enableCompletion', data.enabled, vscode.ConfigurationTarget.Global);
+
+                        // Echo the new state back to the webview for synchronization
+                        this._view?.webview.postMessage({
+                            type: 'updateAutocomplete',
+                            enabled: data.enabled
+                        });
+
+                        // Show notification
+                        this._view?.webview.postMessage({
+                            type: 'showMessage',
+                            message: `Autocomplete is now ${data.enabled ? 'enabled' : 'disabled'}.`,
+                            messageType: 'success'
+                        });
+                    }
+                    break;
             }
         });
 
@@ -661,13 +692,6 @@ class AICompletionProvider implements vscode.InlineCompletionItemProvider {
             return null;
         }
 
-        if (context.triggerKind === vscode.InlineCompletionTriggerKind.Automatic) {
-            const line = document.lineAt(position.line).text;
-            if (!line.includes('//') && !line.includes('function') && !line.includes('const') && !line.includes('let')) {
-                return null;
-            }
-        }
-
         try {
             const linePrefix = document.lineAt(position).text.substr(0, position.character);
             const startLine = Math.max(0, position.line - 10);
@@ -679,7 +703,11 @@ class AICompletionProvider implements vscode.InlineCompletionItemProvider {
             const { response } = await this.modelManager.makeRequest(prompt, true);
             
             if (response && response.trim()) {
-                return [new vscode.InlineCompletionItem(response.trim())];
+                let suggestion = response.trim();
+                if (suggestion.startsWith(linePrefix)) {
+                    suggestion = suggestion.slice(linePrefix.length).replace(/^\s+/, '');
+                }
+                return [new vscode.InlineCompletionItem(suggestion)];
             }
         } catch (error) {
             console.error('AI completion error:', error);
@@ -715,11 +743,14 @@ export function activate(context: vscode.ExtensionContext) {
     // AI Suggestion command
     const suggestCommand = vscode.commands.registerCommand('ai-helper.suggest', async () => {
         const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showInformationMessage('No text selected');
-            return;
-        }
+        if (!editor) return;
 
+        const language = editor.document.languageId; // e.g., 'python', 'typescript'
+        const filename = editor.document.fileName;
+        const codeBefore = editor.document.getText(new vscode.Range(
+            new vscode.Position(0, 0),
+            editor.selection.start
+        ));
         const selection = editor.selection;
         const text = editor.document.getText(selection);
         if (!text) {
@@ -727,13 +758,17 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
+        // New context prompt
+        const contextPrompt = `You are completing code for a ${language} file named ${filename}.\n` +
+                              `Here is the code so far:\n${codeBefore}\nContinue:`;
+
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: "Generating AI suggestion...",
             cancellable: false
         }, async () => {
             try {
-                const { response } = await modelManager.makeRequest(text);
+                const { response } = await modelManager.makeRequest(contextPrompt);
                 vscode.window.showInformationMessage(`AI Suggestion: ${response}`);
             } catch (error: any) {
                 vscode.window.showErrorMessage(`AI request failed: ${error.message}`);
@@ -787,6 +822,14 @@ export function activate(context: vscode.ExtensionContext) {
             const enabled = config.get<boolean>('enableCompletion', false);
             completionProvider.setEnabled(enabled);
             console.log('AI completion toggled:', enabled);
+
+            // --- Add this block to sync with webview ---
+            if (chatProvider['_view']) {
+                chatProvider['_view'].webview.postMessage({
+                    type: 'updateAutocomplete',
+                    enabled
+                });
+            }
         }
     });
 

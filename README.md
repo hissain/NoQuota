@@ -274,6 +274,12 @@ If models don't appear after configuration:
 
 ## 📝 Release Notes
 
+### 2.0.6
+
+* Enhanced chat window with expandable model status setting
+* Autocompletion possible from chat window
+* Code autocompletion is refined with file context
+
 ### 2.0.5
 
 * Enhanced README.md

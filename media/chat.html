@@ -5,25 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Helper Chat</title>
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
         body {
             font-family: var(--vscode-font-family);
             font-size: var(--vscode-font-size);
             color: var(--vscode-foreground);
             background-color: var(--vscode-editor-background);
-            margin: 0;
-            padding: 10px;
             height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 0;
             padding-bottom: 10px;
             border-bottom: 1px solid var(--vscode-panel-border);
+            background: var(--vscode-editor-background);
+            z-index: 2;
         }
         
         .title {
@@ -34,42 +40,47 @@
         .header-actions {
             display: flex;
             gap: 5px;
+            margin-top: 10px;
         }
         
         .model-status {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            margin-bottom: 10px;
-            padding: 10px;
+            position: relative;
             background-color: var(--vscode-input-background);
-            border: 1px solid var(--vscode-input-border);
-            border-radius: 4px;
+            border-bottom: 1px solid var(--vscode-input-border);
+            border-radius: 0 0 4px 4px;
+            z-index: 2;
+            transition: box-shadow 0.2s;
         }
         
-        .current-model {
-            font-size: 12px;
+        .model-status.collapsed {
+            border-radius: 0 0 4px 4px;
+            border-bottom: 1px solid var(--vscode-input-border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+        
+        .model-status-content {
+            display: block;
+            transition: max-height 0.2s;
+            overflow: hidden;
+            padding: 10px;
+        }
+        
+        .model-status.collapsed .model-status-content {
+            display: none;
+            padding: 0;
+        }
+        
+        .chevron-btn {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
             color: var(--vscode-descriptionForeground);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .model-indicator {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--vscode-charts-green);
-        }
-        
-        .status-dot.offline {
-            background-color: var(--vscode-charts-red);
+            z-index: 3;
+            padding: 0;
         }
         
         .models-summary {
@@ -78,12 +89,13 @@
         }
         
         .chat-container {
-            flex: 1;
+            flex: 1 1 auto;
             overflow-y: auto;
-            margin-bottom: 10px;
-            padding: 5px;
-            border: 1px solid var(--vscode-panel-border);
-            border-radius: 4px;
+            margin: 0;
+            padding: 5px 0 5px 0;
+            border: none;
+            border-radius: 0;
+            background: var(--vscode-editor-background);
         }
         
         .message {
@@ -119,6 +131,14 @@
         }
         
         .input-container {
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--vscode-editor-background);
+            padding: 10px 0 0 0;
+            z-index: 2;
+            border-top: 1px solid var(--vscode-panel-border);
             display: flex;
             gap: 8px;
         }
@@ -226,6 +246,21 @@
         .settings-link:hover {
             text-decoration: underline;
         }
+
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: #4caf50; /* green for online */
+            vertical-align: middle;
+            border: 1px solid var(--vscode-panel-border);
+            transition: background 0.2s;
+        }
+        .status-dot.offline {
+            background: #bdbdbd; /* gray for offline */
+        }
     </style>
 </head>
 <body>
@@ -233,28 +268,40 @@
         <div class="title">AI Helper Pro</div>
         <div class="header-actions">
             <button id="refresh-btn" class="btn icon-only secondary" title="Refresh Models">
-                🔄
+                ↻
             </button>
             <button id="settings-btn" class="btn icon-only secondary" title="Open Extension Settings">
-                ⚙️
+                ⚙
             </button>
         </div>
     </div>
-    
     <div class="model-status" id="model-status">
-        <div class="current-model" id="current-model">
-            <div class="model-indicator">
-                <div class="status-dot" id="status-dot"></div>
-                <span id="model-name">Loading models...</span>
+        <button id="chevron-btn" class="chevron-btn" title="Expand/collapse model info">&#9650;</button>
+        <div class="model-status-content" id="model-status-content">
+            <div class="current-model" id="current-model">
+                <div class="model-indicator">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="model-name">Loading models...</span>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <div class="models-summary" id="models-summary">
+                    <a href="#" class="settings-link" id="settings-link">Configure models in settings</a>
+                </div>
+            </div>
+            <div class="models-list" id="models-list" style="font-size:11px; color:var(--vscode-descriptionForeground); margin-top:4px;">
+                <!-- Model checkboxes will be rendered here -->
+            </div>
+            <div style="margin-top:12px;">
+                <div style="font-weight:bold; font-size:12px; margin-bottom:4px;">Code Completion</div>
+                <label style="font-size:11px; cursor:pointer;">
+                    <input type="checkbox" id="autocomplete-checkbox" style="vertical-align:middle; margin-right:4px;">
+                    Enable Autocomplete
+                </label>
             </div>
         </div>
-        <div class="models-summary" id="models-summary">
-            <a href="#" class="settings-link" id="settings-link">Configure models in settings</a>
-        </div>
     </div>
-    
     <div class="notification" id="notification"></div>
-    
     <div class="chat-container" id="chat-container">
         <div class="empty-state">
             <p>👋 Welcome to AI Helper Pro!</p>
@@ -262,19 +309,16 @@
             <p><a href="#" class="settings-link" id="no-models-link" style="display: none;">Configure your AI models in settings to get started</a></p>
         </div>
     </div>
-    
     <div class="input-container">
         <input type="text" id="message-input" class="message-input" placeholder="Type your message..." />
         <button id="send-btn" class="btn">Send</button>
         <button id="clear-btn" class="btn secondary">Clear</button>
     </div>
-    
-    <div id="models">Loading models...</div>
-    
     <script>
         const vscode = acquireVsCodeApi();
         let messages = [];
         let enabledModels = [];
+        let allModels = [];
         
         // DOM elements
         const chatContainer = document.getElementById('chat-container');
@@ -289,6 +333,28 @@
         const refreshBtn = document.getElementById('refresh-btn');
         const settingsLink = document.getElementById('settings-link');
         const noModelsLink = document.getElementById('no-models-link');
+        const modelsListDiv = document.getElementById('models-list');
+        const autocompleteCheckbox = document.getElementById('autocomplete-checkbox');
+        const chevronBtn = document.getElementById('chevron-btn');
+        const modelStatus = document.getElementById('model-status');
+        const modelStatusContent = document.getElementById('model-status-content');
+        let modelsExpanded = true;
+
+        function setModelStatusExpanded(expanded) {
+            modelsExpanded = expanded;
+            if (modelsExpanded) {
+                modelStatus.classList.remove('collapsed');
+                chevronBtn.innerHTML = '&#9650;'; // Up
+            } else {
+                modelStatus.classList.add('collapsed');
+                chevronBtn.innerHTML = '&#9660;'; // Down
+            }
+        }
+        chevronBtn.addEventListener('click', () => {
+            setModelStatusExpanded(!modelsExpanded);
+        });
+        // Initialize expanded
+        setModelStatusExpanded(true);
         
         // Settings button click handler
         settingsBtn.addEventListener('click', () => {
@@ -310,6 +376,15 @@
         noModelsLink.addEventListener('click', (e) => {
             e.preventDefault();
             vscode.postMessage({ type: 'openSettings' });
+        });
+        
+        // Autocomplete checkbox change handler
+        autocompleteCheckbox.addEventListener('change', () => {
+            vscode.postMessage({
+                type: 'toggleAutocomplete',
+                enabled: autocompleteCheckbox.checked
+            });
+            // Do NOT set checked here; wait for updateAutocomplete from extension
         });
         
         // Chat functions
@@ -334,17 +409,32 @@
                 return;
             }
             
-            chatContainer.innerHTML = messages.map(msg => {
+            chatContainer.innerHTML = messages.map((msg, idx) => {
                 const time = new Date(msg.timestamp).toLocaleTimeString();
                 const modelInfo = msg.modelUsed ? ` • ${msg.modelUsed}` : '';
                 
+                // Add copy icon with data-idx attribute
                 return `
                     <div class="message ${msg.role}">
-                        <div>${formatMessage(msg.content)}</div>
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                            <div style="flex:1;">${formatMessage(msg.content)}</div>
+                            <button class="btn icon-only secondary copy-btn" title="Copy" data-idx="${idx}" style="font-size:13px;padding:2px 6px;">⧉</button>
+                        </div>
                         <div class="message-meta">${time}${modelInfo}</div>
                     </div>
                 `;
             }).join('');
+            
+            // Attach copy handlers
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = btn.getAttribute('data-idx');
+                    if (messages[idx]) {
+                        navigator.clipboard.writeText(messages[idx].content);
+                        showNotification('Copied!', 'success');
+                    }
+                });
+            });
             
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -361,8 +451,11 @@
             
             if (enabledModels.length === 0) {
                 modelNameSpan.textContent = 'No models configured';
-                statusDot.classList.add('offline');
+                statusDot.classList.add('offline');    // shows gray (offline)
                 modelsSummaryDiv.innerHTML = '<a href="#" class="settings-link" id="settings-link-refresh">Configure models in settings</a>';
+                modelsListDiv.innerText = 'No models configured';
+                modelsListDiv.style.display = 'none';
+                chevronBtn.style.visibility = 'hidden';
                 
                 // Re-attach event listener for the new link
                 const refreshLink = document.getElementById('settings-link-refresh');
@@ -382,12 +475,16 @@
             
             const primaryModel = enabledModels[0];
             modelNameSpan.textContent = `Active: ${primaryModel.name}`;
-            statusDot.classList.remove('offline');
+            statusDot.classList.remove('offline'); // shows green (online)
             
             const summaryText = enabledModels.length === 1 
                 ? '1 model enabled' 
                 : `${enabledModels.length} models enabled`;
             modelsSummaryDiv.innerHTML = `${summaryText} • <a href="#" class="settings-link" id="settings-link-refresh">Manage in settings</a>`;
+            modelsListDiv.innerHTML = enabledModels.map(m => `<div>${m.name}</div>`).join('');
+            modelsListDiv.style.display = modelsExpanded ? 'block' : 'none';
+            chevronBtn.style.visibility = 'visible';
+            chevronBtn.innerHTML = modelsExpanded ? '&#9660;' : '&#9654;';
             
             // Re-attach event listener for the new link
             const refreshLink = document.getElementById('settings-link-refresh');
@@ -398,6 +495,29 @@
                 });
             }
             
+            // Show all models with enable/disable checkboxes
+            if (allModels.length === 0) {
+                modelsListDiv.innerText = 'No models configured';
+            } else {
+                modelsListDiv.innerHTML = allModels.map((m, idx) => `
+                    <label style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                        <input type="checkbox" class="model-enable-checkbox" data-idx="${idx}" ${m.enabled ? 'checked' : ''}>
+                        <span>${m.name}</span>
+                    </label>
+                `).join('');
+                // Attach event listeners for checkboxes
+                modelsListDiv.querySelectorAll('.model-enable-checkbox').forEach(cb => {
+                    cb.addEventListener('change', (e) => {
+                        const idx = parseInt(cb.getAttribute('data-idx'));
+                        vscode.postMessage({
+                            type: 'toggleModelEnabled',
+                            modelIndex: idx,
+                            enabled: cb.checked
+                        });
+                    });
+                });
+            }
+
             // Enable input
             messageInput.disabled = false;
             sendBtn.disabled = false;
@@ -453,12 +573,15 @@
                     break;
                 case 'updateModels':
                     enabledModels = message.enabledModels || [];
-                    console.log('Received models update:', enabledModels.length, 'enabled models');
+                    allModels = message.allModels || [];
                     updateModelStatus();
-                    updateChat(); // Update chat to show/hide no models message
+                    updateChat();
                     break;
                 case 'showMessage':
                     showNotification(message.message, message.messageType);
+                    break;
+                case 'updateAutocomplete':
+                    autocompleteCheckbox.checked = !!message.enabled;
                     break;
             }
         });
