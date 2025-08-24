@@ -183,6 +183,7 @@ If models don't appear after configuration:
   "apiKey": "sk-...",
   "baseUrl": "https://api.openai.com/v1",
   "priority": 1,
+  "type": "chat"
   "enabled": true
 }
 ```
@@ -197,6 +198,7 @@ If models don't appear after configuration:
   "apiKey": "sk-or-...",
   "baseUrl": "https://openrouter.ai/api/v1",
   "priority": 2,
+  "type": "code"
   "enabled": true
 }
 ```
@@ -211,6 +213,7 @@ If models don't appear after configuration:
   "apiKey": "sk-or-...",
   "baseUrl": "https://openrouter.ai/api/v1",
   "priority": 1,
+  "type": "both"
   "enabled": true
 }
 ```
@@ -273,6 +276,16 @@ If models don't appear after configuration:
 * Use Developer Tools to check for JavaScript errors
 
 ## 📝 Release Notes
+
+### 2.0.7
+
+* Fixed duplicate line issue in code autocompletion (no more repeated lines)
+* Debounced and context-aware code completion (avoids suggestions in comments/strings)
+* Modularized codebase for better maintainability
+* Improved model fallback: automatically tries next enabled model on quota/error
+* Enhanced chat UI: better model management, notifications, and copy-to-clipboard
+* Settings sync: toggle code completion and manage models directly from chat sidebar
+* Performance improvements and bug fixes
 
 ### 2.0.6
 

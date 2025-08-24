@@ -503,6 +503,9 @@
                     <label style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
                         <input type="checkbox" class="model-enable-checkbox" data-idx="${idx}" ${m.enabled ? 'checked' : ''}>
                         <span>${m.name}</span>
+                        <span style="font-size:10px; color:var(--vscode-descriptionForeground); margin-left:6px;">
+                            [${m.type ? m.type : 'both'}]
+                        </span>
                     </label>
                 `).join('');
                 // Attach event listeners for checkboxes

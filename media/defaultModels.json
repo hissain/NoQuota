@@ -1,0 +1,33 @@
+[
+  {
+    "name": "DeepSeekR1 (OpenRouter)",
+    "provider": "openrouter",
+    "apiKey": "",
+    "baseUrl": "https://openrouter.ai/api/v1",
+    "model": "deepseek/deepseek-r1:free",
+    "priority": 1,
+    "enabled": true,
+    "type": "both",
+    "quotaErrors": [
+      "insufficient_quota",
+      "rate_limit_exceeded",
+      "quota_exceeded",
+      "rate limit exceeded",
+      "free-models-per-day",
+      "insufficient_credits",
+      "daily limit exceeded"
+    ]
+  },
+  {
+    "name": "Gemini (Direct)",
+    "provider": "gemini",
+    "apiKey": "",
+    "baseUrl": "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent",
+    "model": "gemini-pro",
+    "priority": 6,
+    "enabled": false,
+    "type": "both",
+    "quotaErrors": ["quota_exceeded", "rate_limit_exceeded"]
+  }
+  // ...other models...
+]

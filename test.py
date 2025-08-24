@@ -37,3 +37,8 @@ response = requests.post(API_URL, headers=headers, json=data2)
 print(response.status_code)
 print(response.json().get("choices", [{}])[0].get("message", {}).get("content", "No content returned"))
 
+def fibonacci(n):
+    if n <= 1:
+        return n
+    else:
+        return(fibonacci(n-1) + fibonacci(n-2))

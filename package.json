@@ -2,7 +2,7 @@
   "name": "ai-helper-pro",
   "displayName": "AI Helper Pro",
   "description": "Multi-model AI assistant for VSCode with automatic fallback, code completion, and quota management.",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "publisher": "cogitoai",
   "icon": "images/icon.png",
   "engines": {
@@ -219,6 +219,16 @@
               "model": "llama2",
               "priority": 5,
               "enabled": false
+            },
+            {
+              "name": "Gemini (Direct)",
+              "provider": "gemini",
+              "apiKey": "",
+              "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+              "model": "gemini-pro",
+              "priority": 6,
+              "enabled": false,
+              "type": "both"
             }
           ],
           "items": {
@@ -230,7 +240,7 @@
               },
               "provider": {
                 "type": "string",
-                "enum": ["openai", "openrouter", "ollama", "custom"],
+                "enum": ["openai", "openrouter", "gemini", "ollama", "custom"],
                 "description": "AI provider"
               },
               "model": {
@@ -256,6 +266,12 @@
                 "type": "boolean",
                 "description": "Whether this model is enabled",
                 "default": true
+              },
+              "type": {
+                "type": "string",
+                "enum": ["chat", "completion", "both"],
+                "description": "Model usage type: chat, completion, or both",
+                "default": "both"
               }
             },
             "required": ["name", "provider", "model"]
