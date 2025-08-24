@@ -1,9 +1,12 @@
-
 # AI Helper Pro
 
 A comprehensive VSCode extension that provides AI-powered suggestions and code completion with support for multiple AI models, automatic fallback, and intelligent quota management.
 
 ## 🚀 Features
+
+![AI Helper Pro](images/ai-helper-pro.png "AI Helper Pro Chat")
+
+![AI Helper Pro](images/ai-helper-pro-settings.png "AI Helper Pro Settings")
 
 ### Multi-Model AI Support
 
@@ -270,6 +273,10 @@ If models don't appear after configuration:
 * Use Developer Tools to check for JavaScript errors
 
 ## 📝 Release Notes
+
+### 2.0.5
+
+* Enhanced README.md
 
 ### 2.0.4
 
